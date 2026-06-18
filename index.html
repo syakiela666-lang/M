@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="icon" type="image/png" href="icon-192.png">
+    <title>Monitoring</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container" id="app">
+
+        <!-- Header -->
+        <header class="app-header">
+            <!-- Row 1: Title + Slider -->
+            <div class="header-top">
+                <h1 class="app-title">Monitoring</h1>
+                <input type="range" id="size-slider" class="size-slider-compact" min="70" max="100" value="100" step="5">
+            </div>
+            <!-- Row 2: Search + Sort -->
+            <div class="search-sort-row">
+                <div class="search-input-wrap">
+                    <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <input type="text" id="search-input" class="search-input" placeholder="Cari koin..." autocomplete="off" autocorrect="off" spellcheck="false">
+                </div>
+                <select id="sort-select" class="sort-select">
+                    <option value="name">Name</option>
+                    <option value="high">High %</option>
+                </select>
+            </div>
+        </header>
+
+        <!-- Content area: favorites pinned top, all coins below -->
+        <div class="content-area">
+            <!-- Favorites (always visible at top) -->
+            <div class="favorites-section" id="favorites-section">
+                <div class="section-header fav-header">★ Favorit</div>
+                <div class="favorites-list" id="favorites-list"></div>
+                <div class="empty-fav" id="empty-fav">Belum ada koin favorit. Tap ☆ untuk menambahkan.</div>
+            </div>
+
+            <!-- All Coins (scrollable) -->
+            <div class="allcoins-section" id="allcoins-section">
+                <div class="section-header allcoins-header">Semua Koin</div>
+                <div class="allcoins-list" id="allcoins-list"></div>
+            </div>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div class="loading-overlay" id="loading-overlay">
+            <div class="spinner"></div>
+        </div>
+
+        <!-- Floating Refresh Button -->
+        <button id="refresh-btn" class="fab-refresh" title="Refresh Harga">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="23 4 23 10 17 10"></polyline>
+                <polyline points="1 20 1 14 7 14"></polyline>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+            </svg>
+        </button>
+
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

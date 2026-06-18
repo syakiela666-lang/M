@@ -1,0 +1,572 @@
+/* ========================================
+   MONITORING APP - Clean White Theme
+   Mobile-first, 9:16 aspect ratio
+   ======================================== */
+
+:root {
+    --bg: #ffffff;
+    --surface: #f8f9fa;
+    --surface-fav: #fffbeb;
+    --border: #e9ecef;
+    --border-fav: #fbbf24;
+    --text-primary: #212529;
+    --text-secondary: #6c757d;
+    --text-muted: #adb5bd;
+    --green: #16a34a;
+    --red: #dc2626;
+    --accent: #3b82f6;
+    --star: #f59e0b;
+    --star-inactive: #d1d5db;
+    --radius: 12px;
+    --display-scale: 1;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text-primary);
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ========== APP CONTAINER ========== */
+.app-container {
+    max-width: 430px;
+    margin: 0 auto;
+    height: 100vh;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    transform-origin: top center;
+    overflow: hidden;
+}
+
+/* ========== HEADER ========== */
+.app-header {
+    flex-shrink: 0;
+    background: var(--bg);
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+}
+
+.header-top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.app-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.3px;
+    flex: 1;
+    min-width: 0;
+}
+
+.btn-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    -webkit-touch-callout: none;
+    touch-action: manipulation;
+    flex-shrink: 0;
+}
+
+.btn-icon:active {
+    transform: scale(0.92);
+    background: var(--border);
+}
+
+.btn-refresh.spinning .icon-refresh {
+    animation: spin 0.8s ease-in-out;
+}
+
+/* ========== FLOATING ACTION BUTTON - REFRESH ========== */
+.fab-refresh {
+    position: fixed;
+    right: 280px;
+    bottom: 60px;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    border: none;
+    background: var(--accent);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    z-index: 100;
+    -webkit-touch-callout: none;
+    touch-action: manipulation;
+}
+
+.fab-refresh:active {
+    transform: scale(0.9);
+    box-shadow: 0 2px 6px rgba(59, 130, 246, 0.3);
+}
+
+.fab-refresh.spinning svg {
+    animation: spin 0.8s ease-in-out;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.header-controls {
+    display: none; /* removed */
+}
+
+/* ========== SEARCH + SORT ROW ========== */
+.search-sort-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.search-input-wrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    padding: 0 10px;
+    transition: border-color 0.2s;
+}
+
+.search-input-wrap:focus-within {
+    border-color: var(--accent);
+}
+
+.sort-select {
+    flex-shrink: 0;
+    padding: 9px 28px 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--text-primary);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236c757d' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    touch-action: manipulation;
+}
+
+/* ========== SIZE SLIDER (compact in header) ========== */
+.size-slider-compact {
+    width: 70px;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--border);
+    outline: none;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.size-slider-compact::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    cursor: pointer;
+}
+
+.size-slider-compact::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    cursor: pointer;
+}
+
+.search-icon {
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.search-input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-size: 13px;
+    color: var(--text-primary);
+    outline: none;
+    padding: 8px 0;
+    min-width: 0;
+}
+
+.search-input::placeholder {
+    color: var(--text-muted);
+}
+
+/* ========== CONTENT AREA (two-panel split) ========== */
+.content-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0; /* critical for flex children to scroll */
+    overflow: hidden;
+}
+
+/* Favorites section - pinned at top */
+.favorites-section {
+    flex-shrink: 0;
+    max-height: 40vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 0 16px;
+    border-bottom: 2px solid var(--border-fav);
+    background: var(--surface-fav);
+}
+
+.favorites-section:empty,
+.favorites-section.hidden {
+    display: none;
+}
+
+.favorites-list {
+    padding: 6px 0;
+}
+
+.empty-fav {
+    text-align: center;
+    padding: 16px 12px;
+    color: var(--text-muted);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+/* All coins section - fills remaining space, scrollable */
+.allcoins-section {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 0 16px 16px;
+    min-height: 0;
+}
+
+.allcoins-list {
+    padding: 6px 0;
+}
+
+/* Section headers */
+.section-header {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    padding: 10px 0 6px;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+}
+
+.fav-header {
+    background: var(--surface-fav);
+    color: var(--star);
+}
+
+.allcoins-header {
+    background: var(--bg);
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-muted);
+}
+
+.empty-state p {
+    font-size: 14px;
+    margin-top: 12px;
+}
+
+.empty-hint {
+    font-size: 12px !important;
+    color: var(--text-muted);
+}
+
+/* Loading dots */
+.loading-dots {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+}
+
+.loading-dots span {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text-muted);
+    animation: dotBounce 1.2s infinite ease-in-out;
+}
+
+.loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+.loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes dotBounce {
+    0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+    40% { transform: scale(1); opacity: 1; }
+}
+
+/* Section headers moved above */
+
+/* ========== COIN CARD ========== */
+.coin-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: calc(10px * var(--display-scale));
+    margin-bottom: calc(8px * var(--display-scale));
+    transition: opacity 0.3s ease;
+    position: relative;
+}
+
+.coin-card.is-favorite {
+    background: var(--surface-fav);
+    border-color: var(--border-fav);
+}
+
+.coin-card.is-favorite .coin-info {
+    flex: 0 1 auto;
+}
+
+.coin-card.fade-update {
+    animation: fadeUpdate 0.5s ease;
+}
+
+@keyframes fadeUpdate {
+    0% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+.card-top {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+/* Star button */
+.btn-star {
+    width: calc(28px * var(--display-scale));
+    height: calc(28px * var(--display-scale));
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--star-inactive);
+    font-size: calc(18px * var(--display-scale));
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    touch-action: manipulation;
+    flex-shrink: 0;
+    padding: 0;
+    line-height: 0.7;
+}
+
+.btn-star.active {
+    color: var(--star);
+}
+
+.btn-star:active {
+    transform: scale(1.2);
+}
+
+.coin-info {
+    min-width: 0;
+}
+
+.coin-name {
+    font-size: calc(15px * var(--display-scale));
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-primary);
+    line-height: 1.2;
+}
+
+.coin-price {
+    font-size: calc(13px * var(--display-scale));
+    font-weight: 500;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+    margin-top: 1px;
+}
+
+.card-right {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.coin-pct {
+    font-size: calc(12px * var(--display-scale));
+    font-weight: 600;
+    padding: calc(3px * var(--display-scale)) calc(8px * var(--display-scale));
+    border-radius: 6px;
+    min-width: calc(58px * var(--display-scale));
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+}
+
+/* Inline pct inside coin-info for favorites */
+.coin-info .coin-pct {
+    font-size: calc(10px * var(--display-scale));
+    padding: 1px calc(5px * var(--display-scale));
+    min-width: auto;
+    display: inline-block;
+    margin-top: 2px;
+}
+
+.coin-pct.positive {
+    background: var(--green);
+    color: #ffffff;
+}
+
+.coin-pct.negative {
+    background: var(--red);
+    color: #ffffff;
+}
+
+.coin-pct.zero {
+    background: var(--text-secondary);
+    color: #ffffff;
+}
+
+/* ========== NOTES (inline next to %, favorites only) ========== */
+.coin-note {
+    flex: 1 1 0;
+    min-width: 0;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    background: transparent;
+    font-size: calc(12px * var(--display-scale));
+    color: var(--text-primary);
+    resize: none;
+    outline: none;
+    font-family: inherit;
+    line-height: 1.5;
+    padding: calc(2px * var(--display-scale)) calc(4px * var(--display-scale));
+    overflow: hidden;
+}
+
+.coin-note::placeholder {
+    color: var(--text-muted);
+}
+
+/* ========== LOADING OVERLAY ========== */
+.loading-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.7);
+    z-index: 999;
+    align-items: center;
+    justify-content: center;
+}
+
+.loading-overlay.active {
+    display: flex;
+}
+
+.spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+}
+
+/* ========== TOAST ========== */
+.toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--text-primary);
+    color: var(--bg);
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    opacity: 0;
+    transition: all 0.3s ease;
+    z-index: 1000;
+    pointer-events: none;
+    white-space: nowrap;
+}
+
+.toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+}
+
+/* ========== NO RESULTS ========== */
+.no-results {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+/* ========== SCROLLBAR ========== */
+.favorites-section::-webkit-scrollbar,
+.allcoins-section::-webkit-scrollbar {
+    width: 3px;
+}
+.favorites-section::-webkit-scrollbar-track,
+.allcoins-section::-webkit-scrollbar-track {
+    background: transparent;
+}
+.favorites-section::-webkit-scrollbar-thumb,
+.allcoins-section::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
+}
