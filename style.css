@@ -103,7 +103,7 @@ body {
 /* ========== FLOATING ACTION BUTTON - REFRESH ========== */
 .fab-refresh {
     position: fixed;
-    right: 280px;
+    right: 80px;
     bottom: 60px;
     width: 52px;
     height: 52px;
