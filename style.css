@@ -104,9 +104,9 @@ body {
 .fab-refresh {
     position: fixed;
     right: 80px;
-    bottom: 60px;
-    width: 52px;
-    height: 52px;
+    bottom: 100px;
+    width: 130px;
+    height: 130px;
     border-radius: 50%;
     border: none;
     background: var(--accent);
