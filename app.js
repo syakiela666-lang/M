@@ -367,8 +367,8 @@ function createCoinCard(symbol, isFav, inFavTab) {
         }
 
         card.innerHTML = `
+            <button class="btn-star active" data-symbol="${symbol}">${starIcon}</button>
             <div class="card-top">
-                <button class="btn-star active" data-symbol="${symbol}">${starIcon}</button>
                 <div class="coin-info">
                     <div class="coin-name">${data.name}</div>
                     <div class="coin-price">${formattedPrice}</div>
@@ -612,7 +612,71 @@ function showToast(message) {
 // ========== EVENT BINDING ==========
 function bindEvents() {
     // Refresh
-    refreshBtnEl.addEventListener('click', () => refreshPrices());
+    // Refresh button: drag + click
+    let isDragging = false;
+    let dragMoved = false;
+    let dragStartX, dragStartY, btnStartX, btnStartY;
+
+    function onDragStart(e) {
+        const point = e.touches ? e.touches[0] : e;
+        isDragging = true;
+        dragMoved = false;
+        const rect = refreshBtnEl.getBoundingClientRect();
+        dragStartX = point.clientX;
+        dragStartY = point.clientY;
+        btnStartX = rect.left;
+        btnStartY = rect.top;
+        refreshBtnEl.classList.add('dragging');
+        e.preventDefault();
+    }
+
+    function onDragMove(e) {
+        if (!isDragging) return;
+        const point = e.touches ? e.touches[0] : e;
+        const dx = point.clientX - dragStartX;
+        const dy = point.clientY - dragStartY;
+        if (Math.abs(dx) > 3 || Math.abs(dy) > 3) dragMoved = true;
+        const btnSize = refreshBtnEl.offsetWidth;
+        let newX = btnStartX + dx;
+        let newY = btnStartY + dy;
+        // Clamp within viewport
+        newX = Math.max(0, Math.min(window.innerWidth - btnSize, newX));
+        newY = Math.max(0, Math.min(window.innerHeight - btnSize, newY));
+        refreshBtnEl.style.left = newX + 'px';
+        refreshBtnEl.style.top = newY + 'px';
+        refreshBtnEl.style.right = 'auto';
+        refreshBtnEl.style.bottom = 'auto';
+    }
+
+    function onDragEnd() {
+        if (!isDragging) return;
+        isDragging = false;
+        refreshBtnEl.classList.remove('dragging');
+        if (!dragMoved) {
+            refreshPrices();
+        }
+        // Save position
+        const rect = refreshBtnEl.getBoundingClientRect();
+        localStorage.setItem('refresh-btn-pos', JSON.stringify({ left: rect.left, top: rect.top }));
+    }
+
+    // Restore saved position
+    try {
+        const pos = JSON.parse(localStorage.getItem('refresh-btn-pos'));
+        if (pos && typeof pos.left === 'number') {
+            refreshBtnEl.style.left = pos.left + 'px';
+            refreshBtnEl.style.top = pos.top + 'px';
+            refreshBtnEl.style.right = 'auto';
+            refreshBtnEl.style.bottom = 'auto';
+        }
+    } catch(e) {}
+
+    refreshBtnEl.addEventListener('mousedown', onDragStart);
+    document.addEventListener('mousemove', onDragMove);
+    document.addEventListener('mouseup', onDragEnd);
+    refreshBtnEl.addEventListener('touchstart', onDragStart, { passive: false });
+    document.addEventListener('touchmove', onDragMove, { passive: false });
+    document.addEventListener('touchend', onDragEnd);
 
     // Sort
     sortSelectEl.addEventListener('change', () => {

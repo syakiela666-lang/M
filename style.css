@@ -88,10 +88,10 @@ body {
 /* ========== FLOATING ACTION BUTTON - REFRESH ========== */
 .fab-refresh {
     position: fixed;
-    right: 80px;
-    bottom: 100px;
-    width: 152px;
-    height: 152px;
+    right: 56px;
+    bottom: 70px;
+    width: 106px;
+    height: 106px;
     border-radius: 50%;
     border: none;
     background: var(--accent);
@@ -99,16 +99,21 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    cursor: pointer;
+    cursor: grab;
     box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    transition: box-shadow 0.2s ease;
     z-index: 100;
     -webkit-touch-callout: none;
-    touch-action: manipulation;
+    touch-action: none;
+    user-select: none;
+}
+
+.fab-refresh.dragging {
+    cursor: grabbing;
+    transition: none;
 }
 
 .fab-refresh:active {
-    transform: scale(0.9);
     box-shadow: 0 2px 6px rgba(59, 130, 246, 0.3);
 }
 
@@ -435,12 +440,14 @@ body {
     flex-direction: column;
     align-items: flex-start;
     gap: 4px;
+    padding-right: calc(30px * var(--display-scale));
 }
 
 .allcoins-grid .btn-star {
     position: absolute;
-    top: 6px;
+    top: 50%;
     right: 6px;
+    transform: translateY(-50%);
     width: calc(24px * var(--display-scale));
     height: calc(24px * var(--display-scale));
     font-size: calc(15px * var(--display-scale));
@@ -495,6 +502,11 @@ body {
     flex-wrap: wrap;
 }
 
+/* Favorites: make room for star at top-right */
+.favorites-list .card-top {
+    padding-right: calc(36px * var(--display-scale));
+}
+
 /* Note done button */
 .btn-note-done {
     flex-shrink: 0;
@@ -536,6 +548,14 @@ body {
     flex-shrink: 0;
     padding: 0;
     line-height: 0.7;
+}
+
+/* Star in Favorites: top-right corner */
+.favorites-list .btn-star {
+    position: absolute;
+    top: calc(8px * var(--display-scale));
+    right: calc(8px * var(--display-scale));
+    z-index: 2;
 }
 
 .btn-star.active {
