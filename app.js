@@ -81,7 +81,7 @@ function loadState() {
     if (s) currentSort = s;
 
     const sl = localStorage.getItem(LS_KEYS.slider);
-    if (sl) sliderValue = Math.min(100, parseInt(sl));
+    if (sl) sliderValue = Math.min(150, parseInt(sl));
 }
 
 function saveFavorites() {
