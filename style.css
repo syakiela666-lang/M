@@ -472,7 +472,7 @@ body {
 }
 
 .allcoins-grid .coin-pct {
-    font-size: calc(9px * var(--display-scale));
+    font-size: calc(25px * var(--display-scale));
     padding: calc(2px * var(--display-scale)) calc(5px * var(--display-scale));
     min-width: calc(44px * var(--display-scale));
 }
@@ -504,7 +504,7 @@ body {
 
 /* Favorites: make room for star at top-right */
 .favorites-list .card-top {
-    padding-right: calc(36px * var(--display-scale));
+    padding-right: calc(25px * var(--display-scale));
 }
 
 /* Note done button */
@@ -553,8 +553,8 @@ body {
 /* Star in Favorites: top-right corner */
 .favorites-list .btn-star {
     position: absolute;
-    top: calc(8px * var(--display-scale));
-    right: calc(8px * var(--display-scale));
+    top: calc(3px * var(--display-scale));
+    right: calc(3px * var(--display-scale));
     z-index: 2;
 }
 
@@ -580,7 +580,7 @@ body {
 }
 
 .coin-price {
-    font-size: calc(13px * var(--display-scale));
+    font-size: calc(14px * var(--display-scale));
     font-weight: 500;
     color: var(--text-secondary);
     font-variant-numeric: tabular-nums;
@@ -655,7 +655,7 @@ body {
     align-items: center;
     gap: 6px;
     padding: calc(4px * var(--display-scale)) 0 0;
-    margin-left: calc(36px * var(--display-scale));
+    margin-left: calc(43px * var(--display-scale));
 }
 
 .btn-target-toggle {

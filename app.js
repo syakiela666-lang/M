@@ -345,7 +345,7 @@ function createCoinCard(symbol, isFav, inFavTab) {
     else if (data.pct < 0) pctClass = 'negative';
 
     const formattedPrice = formatPrice(data.price);
-    const formattedPct = (data.pct > 0 ? '+' : '') + data.pct.toFixed(2) + '%';
+    const formattedPct = (data.pct > 0 ? '+' : '') + Math.round(data.pct) + '%';
 
     // Star icon
     const starIcon = isFav ? '\u2605' : '\u2606';
@@ -732,6 +732,69 @@ function bindEvents() {
             }
         });
     });
+
+    // Swipe gesture to switch tabs
+    let swipeStartX = 0;
+    let swipeStartY = 0;
+    let swipeTracking = false;
+    const SWIPE_THRESHOLD = 50;
+    const SWIPE_MAX_VERTICAL = 80;
+
+    const appContainer = document.querySelector('.app-container');
+
+    appContainer.addEventListener('touchstart', (e) => {
+        // Don't start swipe on interactive elements
+        const target = e.target;
+        if (target.closest('textarea, input, button, select, .btn-star, .btn-target-toggle, .fab-refresh')) return;
+        swipeStartX = e.touches[0].clientX;
+        swipeStartY = e.touches[0].clientY;
+        swipeTracking = true;
+    }, { passive: true });
+
+    appContainer.addEventListener('touchend', (e) => {
+        if (!swipeTracking) return;
+        swipeTracking = false;
+        const dx = e.changedTouches[0].clientX - swipeStartX;
+        const dy = e.changedTouches[0].clientY - swipeStartY;
+        // Only trigger if horizontal swipe is dominant
+        if (Math.abs(dx) < SWIPE_THRESHOLD || Math.abs(dy) > SWIPE_MAX_VERTICAL) return;
+
+        // Find current active tab
+        let currentTab = 'favorites';
+        tabBtns.forEach(btn => {
+            if (btn.classList.contains('active')) currentTab = btn.dataset.tab;
+        });
+
+        let newTab = null;
+        if (dx < 0 && currentTab === 'favorites') {
+            newTab = 'allcoins'; // swipe left → all coins
+        } else if (dx > 0 && currentTab === 'allcoins') {
+            newTab = 'favorites'; // swipe right → favorites
+        }
+
+        if (newTab) {
+            tabBtns.forEach(b => b.classList.remove('active'));
+            tabPanels.forEach(p => p.classList.remove('active'));
+            const newBtn = document.querySelector(`[data-tab="${newTab}"]`);
+            const newPanel = document.getElementById('tab-' + newTab);
+            newBtn.classList.add('active');
+            newPanel.classList.add('active');
+
+            if (newTab === 'favorites') {
+                newPanel.querySelectorAll('.coin-note').forEach(noteEl => {
+                    if (noteEl.value) {
+                        noteEl.style.height = 'auto';
+                        requestAnimationFrame(() => {
+                            noteEl.style.height = noteEl.scrollHeight + 'px';
+                        });
+                    }
+                });
+                newPanel.querySelectorAll('.coin-card').forEach(card => {
+                    if (card._updateMeter) card._updateMeter();
+                });
+            }
+        }
+    }, { passive: true });
 
     // Settings popup
     settingsBtnEl.addEventListener('click', () => {
