@@ -1148,41 +1148,26 @@ function setupWebSocket() {
         try {
             const msg = JSON.parse(event.data);
 
-            // 1. Abaikan pesan konfirmasi dari Binance agar tidak error
+            // 1. Abaikan pesan konfirmasi berlangganan dari Binance
             if (msg.id !== undefined && msg.result === null) return;
 
-            // 2. Deteksi Format Pintar (Mendukung Raw & Combined)
-            let streamName = "";
-            let streamData = null;
+            // 2. Ekstrak isi payload (Abaikan streamName, langsung ambil datanya)
+            const payload = msg.data !== undefined ? msg.data : msg;
 
-            if (msg.stream && msg.data) {
-                // Format Combined Stream (/stream?streams=)
-                streamName = msg.stream;
-                streamData = msg.data;
-            } else if (Array.isArray(msg)) {
-                // Format Raw Stream Ticker (/ws/!ticker@arr)
-                streamName = "!ticker@arr";
-                streamData = msg;
-            } else if (msg.e === "kline") {
-                // Format Raw Stream Kline
-                streamName = `${msg.s.toLowerCase()}@kline_1m`;
-                streamData = msg;
-            } else {
-                return; // Abaikan pesan aneh lainnya
-            }
-            
-            // 3. Proses Data Utama
-            if (streamName === '!ticker@arr') {
-                streamData.forEach(t => {
+            // 3. Deteksi Ticker Harga (24hrTicker Array)
+            if (Array.isArray(payload) && payload.length > 0 && payload[0].e === '24hrTicker') {
+                payload.forEach(t => {
                     const sym = t.s;
                     if (allTickers[sym]) {
                         allTickers[sym].price = parseFloat(t.c);
                         allTickers[sym].pct = parseFloat(t.P);
                     }
                 });
-            } else if (streamName.endsWith('@kline_1m')) {
-                const sym = streamData.s;
-                const k = streamData.k;
+            } 
+            // 4. Deteksi Grafik/Candle (kline)
+            else if (payload.e === 'kline') {
+                const sym = payload.s;
+                const k = payload.k;
                 const close = parseFloat(k.c);
                 const kTime = k.t;
                 
@@ -1221,6 +1206,9 @@ function setupWebSocket() {
                     allTickers[sym].stochRsi = stochRsi;
                     allTickers[sym].obScore = rsi + crsi;
                 }
+            } else {
+                // Perangkap kalau data yang dikirim Binance bentuknya aneh
+                console.log("🕵️ Data misterius masuk:", payload);
             }
         } catch (err) {
             console.error("🚨 Parsing Error di onmessage:", err);
