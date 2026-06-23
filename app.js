@@ -1118,7 +1118,7 @@ function setupWebSocket() {
     }
     
     // Connect to combined stream with just ticker first to keep URL short
-    wsConnection = new WebSocket(`wss://fstream.binance.info/stream?streams=!ticker@arr`);
+    wsConnection = new WebSocket(`wss://fstream.binance.com/stream?streams=!ticker@arr`);
     
     wsConnection.onopen = async () => {
         showToast("Live Data Terhubung!");
@@ -1137,6 +1137,10 @@ function setupWebSocket() {
             }));
             await new Promise(r => setTimeout(r, 300));
         }
+    };
+    
+    wsConnection.onerror = (error) => {
+        console.error("🚨 WebSocket Error: Koneksi gagal, nyangkut, atau diblokir ISP!", error);
     };
     
     wsConnection.onmessage = (event) => {
@@ -1194,7 +1198,9 @@ function setupWebSocket() {
                     allTickers[sym].obScore = rsi + crsi;
                 }
             }
-        } catch (err) {}
+        } catch (err) {
+            console.error("🚨 Parsing Error di onmessage:", err);
+        }
     };
     
     wsConnection.onclose = () => {
