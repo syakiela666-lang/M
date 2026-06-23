@@ -1121,6 +1121,7 @@ function setupWebSocket() {
     wsConnection = new WebSocket(`wss://fstream.binance.com/stream?streams=!ticker@arr`);
     
     wsConnection.onopen = async () => {
+        console.log("✅ WebSocket BERHASIL terbuka!");
         showToast("Live Data Terhubung!");
         
         // Subscribe to klines in chunks to avoid payload limits
@@ -1146,6 +1147,7 @@ function setupWebSocket() {
     wsConnection.onmessage = (event) => {
         try {
             const msg = JSON.parse(event.data);
+            console.log("📩 Data masuk:", msg.stream);
             if (!msg.stream || !msg.data) return;
             
             if (msg.stream === '!ticker@arr') {
