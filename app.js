@@ -135,6 +135,24 @@ async function fetchFromBinance() {
     throw new Error('All Binance endpoints unreachable');
 }
 
+async function fetchFromBinanceWithPath(path) {
+    const baseUrls = [
+        'https://fapi.binance.com',
+        'https://fapi1.binance.com',
+        'https://fapi2.binance.com',
+        'https://fapi3.binance.com'
+    ];
+    for (const base of baseUrls) {
+        try {
+            const res = await fetchWithFallback(`${base}${path}`);
+            return await res.json();
+        } catch (e) {
+            continue;
+        }
+    }
+    throw new Error('All Binance endpoints unreachable for path: ' + path);
+}
+
 async function fetchAllTickers() {
     try {
         const data = await fetchFromBinance();
@@ -312,14 +330,66 @@ function getTargetProgress(symbol) {
     return 100;
 }
 
-// ========== RENDERING ==========
-function renderList() {
-    // Clear both lists
-    favListEl.innerHTML = '';
-    allcoinsListEl.innerHTML = '';
+/// ========== RENDERING ==========
+const cardCacheFav = {};
+const cardCacheAll = {};
 
+function updateCoinCardDOM(card, symbol, isFav, inFavTab) {
+    const data = allTickers[symbol];
+    if (!data) return;
+
+    if (isFav) {
+        card.classList.add('is-favorite');
+        const btnStar = card.querySelector('.btn-star');
+        if (btnStar) {
+            btnStar.textContent = '\u2605';
+            btnStar.classList.add('active');
+        }
+    } else {
+        card.classList.remove('is-favorite');
+        const btnStar = card.querySelector('.btn-star');
+        if (btnStar) {
+            btnStar.textContent = '\u2606';
+            btnStar.classList.remove('active');
+        }
+    }
+
+    const formattedPrice = formatPrice(data.price);
+    const formattedPct = (data.pct > 0 ? '+' : '') + Math.round(data.pct) + '%';
+    
+    const priceEl = card.querySelector('.coin-price');
+    const pctEl = card.querySelector('.coin-pct');
+    if (priceEl && priceEl.textContent !== formattedPrice) priceEl.textContent = formattedPrice;
+    if (pctEl && pctEl.textContent !== formattedPct) {
+        pctEl.textContent = formattedPct;
+        pctEl.className = 'coin-pct ' + (data.pct > 0 ? 'positive' : data.pct < 0 ? 'negative' : 'zero');
+    }
+
+    const rsiInfoEl = card.querySelector('.rsi-info');
+    if (data.rsi !== undefined && data.crsi !== undefined) {
+        const stochStr = data.stochRsi !== undefined ? ` | StochRSI: ${data.stochRsi.toFixed(1)}` : '';
+        const rsiText = `RSI: ${data.rsi.toFixed(1)} | cRSI: ${data.crsi.toFixed(1)}${stochStr}`;
+        if (rsiInfoEl) {
+            if (rsiInfoEl.textContent !== rsiText) rsiInfoEl.textContent = rsiText;
+        } else {
+            const newRsi = document.createElement('div');
+            newRsi.className = 'rsi-info';
+            newRsi.style = "font-size:10px; color:#b2b5be; margin-top:2px; font-weight:bold;";
+            newRsi.textContent = rsiText;
+            const infoEl = card.querySelector('.coin-info');
+            if (infoEl) infoEl.appendChild(newRsi);
+        }
+    } else if (rsiInfoEl) {
+        rsiInfoEl.remove();
+    }
+
+    if (inFavTab && card._updateMeter) {
+        card._updateMeter();
+    }
+}
+
+function renderList() {
     if (allSymbols.length === 0) {
-        // Still loading
         emptyFavEl.style.display = 'none';
         allcoinsListEl.innerHTML = `
             <div class="empty-state" style="grid-column: 1/-1;">
@@ -327,6 +397,9 @@ function renderList() {
                 <p>Memuat data dari Binance...</p>
             </div>`;
         return;
+    } else {
+        const emptyState = allcoinsListEl.querySelector('.empty-state');
+        if (emptyState) emptyState.remove();
     }
 
     const { favs } = getDisplayList();
@@ -334,8 +407,17 @@ function renderList() {
     // === Favorites tab ===
     if (favs.length > 0) {
         emptyFavEl.style.display = 'none';
-        favs.forEach(symbol => {
-            favListEl.appendChild(createCoinCard(symbol, true, true));
+        favs.forEach((symbol, index) => {
+            let card = cardCacheFav[symbol];
+            if (!card) {
+                card = createCoinCard(symbol, true, true);
+                cardCacheFav[symbol] = card;
+            } else {
+                updateCoinCardDOM(card, symbol, true, true);
+            }
+            if (favListEl.children[index] !== card) {
+                favListEl.insertBefore(card, favListEl.children[index] || null);
+            }
         });
     } else {
         if (searchQuery) {
@@ -345,8 +427,17 @@ function renderList() {
         }
     }
 
-    // === All Coins tab (grid) - shows ALL coins ===
-    // Use all symbols that match search (including favorites)
+    Object.keys(cardCacheFav).forEach(sym => {
+        if (!favorites.has(sym)) {
+            const card = cardCacheFav[sym];
+            if (card && card.parentNode) {
+                card.parentNode.removeChild(card);
+            }
+            delete cardCacheFav[sym];
+        }
+    });
+
+    // === All Coins tab ===
     let allCoins;
     if (searchQuery) {
         const q = searchQuery.toUpperCase();
@@ -361,16 +452,36 @@ function renderList() {
     allCoins.sort(sortFn2);
 
     if (allCoins.length > 0) {
-        allCoins.forEach(symbol => {
-            allcoinsListEl.appendChild(createCoinCard(symbol, favorites.has(symbol), false));
+        const noRes = allcoinsListEl.querySelector('.no-results');
+        if (noRes) noRes.remove();
+        
+        allCoins.forEach((symbol, index) => {
+            const isFav = favorites.has(symbol);
+            let card = cardCacheAll[symbol];
+            if (!card) {
+                card = createCoinCard(symbol, isFav, false);
+                cardCacheAll[symbol] = card;
+            } else {
+                updateCoinCardDOM(card, symbol, isFav, false);
+            }
+            if (allcoinsListEl.children[index] !== card) {
+                allcoinsListEl.insertBefore(card, allcoinsListEl.children[index] || null);
+            }
+        });
+        
+        // Remove nodes not in allCoins (filtered out by search)
+        Array.from(allcoinsListEl.children).forEach(child => {
+            const sym = child.dataset.symbol;
+            if (sym && !allCoins.includes(sym)) {
+                child.remove();
+            }
         });
     } else {
+        allcoinsListEl.innerHTML = '';
         const noRes = document.createElement('div');
         noRes.className = 'no-results';
         noRes.style.gridColumn = '1/-1';
-        noRes.textContent = searchQuery
-            ? `Tidak ada koin "${searchQuery}"`
-            : 'Belum ada data.';
+        noRes.innerHTML = `<p>Koin "${searchQuery}" tidak ditemukan.</p>`;
         allcoinsListEl.appendChild(noRes);
     }
 }
@@ -413,7 +524,7 @@ function createCoinCard(symbol, isFav, inFavTab) {
         let rsiInfo = '';
         if (data.rsi !== undefined && data.crsi !== undefined) {
             const stochStr = data.stochRsi !== undefined ? ` | StochRSI: ${data.stochRsi.toFixed(1)}` : '';
-            rsiInfo = `<div style="font-size:10px; color:#b2b5be; margin-top:2px; font-weight:bold;">RSI: ${data.rsi.toFixed(1)} | cRSI: ${data.crsi.toFixed(1)}${stochStr}</div>`;
+            rsiInfo = `<div class="rsi-info" style="font-size:10px; color:#b2b5be; margin-top:2px; font-weight:bold;">RSI: ${data.rsi.toFixed(1)} | cRSI: ${data.crsi.toFixed(1)}${stochStr}</div>`;
         }
 
         card.innerHTML = `
@@ -449,7 +560,7 @@ function createCoinCard(symbol, isFav, inFavTab) {
         let rsiInfo = '';
         if (data.rsi !== undefined && data.crsi !== undefined) {
             const stochStr = data.stochRsi !== undefined ? ` | StochRSI: ${data.stochRsi.toFixed(1)}` : '';
-            rsiInfo = `<div style="font-size:10px; color:#b2b5be; margin-top:2px; font-weight:bold;">RSI: ${data.rsi.toFixed(1)} | cRSI: ${data.crsi.toFixed(1)}${stochStr}</div>`;
+            rsiInfo = `<div class="rsi-info" style="font-size:10px; color:#b2b5be; margin-top:2px; font-weight:bold;">RSI: ${data.rsi.toFixed(1)} | cRSI: ${data.crsi.toFixed(1)}${stochStr}</div>`;
         }
 
         card.innerHTML = `
@@ -907,8 +1018,7 @@ let renderInterval = null;
 async function initSingleIndicator(symbol) {
     try {
         const KLINE_LIMIT = 50; 
-        const res = await fetchWithFallback(`https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=1m&limit=${KLINE_LIMIT}`);
-        const data = await res.json();
+        const data = await fetchFromBinanceWithPath(`/fapi/v1/klines?symbol=${symbol}&interval=1m&limit=${KLINE_LIMIT}`);
         
         const crsiCalc = new StatefulCyclicRSI(20);
         let lastCrsi = null;
@@ -1008,9 +1118,9 @@ function setupWebSocket() {
     }
     
     // Connect to combined stream with just ticker first to keep URL short
-    wsConnection = new WebSocket(`wss://fstream.binance.com/stream?streams=!ticker@arr`);
+    wsConnection = new WebSocket(`wss://fstream.binance.info/stream?streams=!ticker@arr`);
     
-    wsConnection.onopen = () => {
+    wsConnection.onopen = async () => {
         showToast("Live Data Terhubung!");
         
         // Subscribe to klines in chunks to avoid payload limits
@@ -1025,6 +1135,7 @@ function setupWebSocket() {
                 params: chunk,
                 id: idCounter++
             }));
+            await new Promise(r => setTimeout(r, 300));
         }
     };
     
