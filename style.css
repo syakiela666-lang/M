@@ -90,8 +90,8 @@ body {
     position: fixed;
     right: 56px;
     bottom: 70px;
-    width: 106px;
-    height: 106px;
+    width: 53px;
+    height: 53px;
     border-radius: 50%;
     border: none;
     background: var(--accent);

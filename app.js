@@ -29,7 +29,8 @@ let allSymbols = [];       // ['BTCUSDT', 'ETHUSDT', ...] sorted
 let favorites = new Set(); // Set of symbol strings
 let notes = {};            // { BTCUSDT: 'some note', ... }
 let targets = {};          // { BTCUSDT: 0.04, ... }
-let currentSort = 'name';
+let currentSort = 'high';
+let currentMode = 'normal'; // 'normal', 'ob', 'os'
 let sliderValue = 100;
 let searchQuery = '';
 
@@ -38,6 +39,8 @@ const favListEl = document.getElementById('favorites-list');
 const emptyFavEl = document.getElementById('empty-fav');
 const allcoinsListEl = document.getElementById('allcoins-list');
 const searchInputEl = document.getElementById('search-input');
+const btnObEl = document.getElementById('btn-ob');
+const btnOsEl = document.getElementById('btn-os');
 const refreshBtnEl = document.getElementById('refresh-btn');
 const sortSelectEl = document.getElementById('sort-select');
 const sizeSliderEl = document.getElementById('size-slider');
@@ -77,8 +80,7 @@ function loadState() {
         if (t) targets = JSON.parse(t);
     } catch(e) { targets = {}; }
 
-    const s = localStorage.getItem(LS_KEYS.sort);
-    if (s) currentSort = s;
+
 
     const sl = localStorage.getItem(LS_KEYS.slider);
     if (sl) sliderValue = Math.min(150, parseInt(sl));
@@ -137,6 +139,7 @@ async function fetchAllTickers() {
     try {
         const data = await fetchFromBinance();
 
+        const oldTickers = allTickers;
         allTickers = {};
         allSymbols = [];
 
@@ -151,10 +154,19 @@ async function fetchAllTickers() {
                 price: parseFloat(t.lastPrice),
                 pct: parseFloat(t.priceChangePercent)
             };
+            
+            // Preserve RSI, cRSI, and obScore if they exist
+            if (oldTickers[symbol] && oldTickers[symbol].rsi !== undefined) {
+                allTickers[symbol].rsi = oldTickers[symbol].rsi;
+                allTickers[symbol].crsi = oldTickers[symbol].crsi;
+                allTickers[symbol].obScore = oldTickers[symbol].obScore;
+            }
+            
             allSymbols.push(symbol);
         });
 
         allSymbols.sort((a, b) => a.localeCompare(b));
+        initializeIndicators();
         renderList();
     } catch (err) {
         console.error('Fetch error:', err);
@@ -235,6 +247,30 @@ function getDisplayList() {
 }
 
 function getSortFunction() {
+    if (currentMode === 'ob') {
+        return (a, b) => {
+            const scoreA = allTickers[a] && allTickers[a].obScore !== undefined ? allTickers[a].obScore : -Infinity;
+            const scoreB = allTickers[b] && allTickers[b].obScore !== undefined ? allTickers[b].obScore : -Infinity;
+            if (scoreA === scoreB) {
+                const pctA = allTickers[a] ? allTickers[a].pct : -Infinity;
+                const pctB = allTickers[b] ? allTickers[b].pct : -Infinity;
+                return pctB - pctA;
+            }
+            return scoreB - scoreA;
+        };
+    }
+    if (currentMode === 'os') {
+        return (a, b) => {
+            const scoreA = allTickers[a] && allTickers[a].obScore !== undefined ? allTickers[a].obScore : Infinity;
+            const scoreB = allTickers[b] && allTickers[b].obScore !== undefined ? allTickers[b].obScore : Infinity;
+            if (scoreA === scoreB) {
+                const pctA = allTickers[a] ? allTickers[a].pct : Infinity;
+                const pctB = allTickers[b] ? allTickers[b].pct : Infinity;
+                return pctA - pctB; // sort by lower percent for oversold
+            }
+            return scoreA - scoreB;
+        };
+    }
     if (currentSort === 'high') {
         return (a, b) => {
             const pctA = allTickers[a] ? allTickers[a].pct : -Infinity;
@@ -242,7 +278,15 @@ function getSortFunction() {
             return pctB - pctA;
         };
     }
-    // Default: name A-Z
+    if (currentSort === 'low') {
+        return (a, b) => {
+            const pctA = allTickers[a] ? allTickers[a].pct : Infinity;
+            const pctB = allTickers[b] ? allTickers[b].pct : Infinity;
+            return pctA - pctB;
+        };
+    }
+
+    // Default fallback
     return (a, b) => a.localeCompare(b);
 }
 
@@ -366,6 +410,12 @@ function createCoinCard(symbol, isFav, inFavTab) {
             initProgress = Math.round(initProgress);
         }
 
+        let rsiInfo = '';
+        if (data.rsi !== undefined && data.crsi !== undefined) {
+            const stochStr = data.stochRsi !== undefined ? ` | StochRSI: ${data.stochRsi.toFixed(1)}` : '';
+            rsiInfo = `<div style="font-size:10px; color:#b2b5be; margin-top:2px; font-weight:bold;">RSI: ${data.rsi.toFixed(1)} | cRSI: ${data.crsi.toFixed(1)}${stochStr}</div>`;
+        }
+
         card.innerHTML = `
             <button class="btn-star active" data-symbol="${symbol}">${starIcon}</button>
             <div class="card-top">
@@ -373,13 +423,8 @@ function createCoinCard(symbol, isFav, inFavTab) {
                     <div class="coin-name">${data.name}</div>
                     <div class="coin-price">${formattedPrice}</div>
                     <span class="coin-pct ${pctClass}">${formattedPct}</span>
+                    ${rsiInfo}
                 </div>
-                <textarea class="coin-note" rows="1" placeholder="Catatan..." data-symbol="${symbol}">${notes[symbol] || ''}</textarea>
-                <button class="btn-note-done" data-symbol="${symbol}" title="Selesai" style="display:none;">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="20 6 9 17 4 12"></polyline>
-                    </svg>
-                </button>
             </div>
             <div class="target-row">
                 <button class="btn-target-toggle" data-symbol="${symbol}" title="Set target harga">
@@ -401,6 +446,12 @@ function createCoinCard(symbol, isFav, inFavTab) {
         `;
     } else {
         // All Coins tab or non-fav: compact grid card
+        let rsiInfo = '';
+        if (data.rsi !== undefined && data.crsi !== undefined) {
+            const stochStr = data.stochRsi !== undefined ? ` | StochRSI: ${data.stochRsi.toFixed(1)}` : '';
+            rsiInfo = `<div style="font-size:10px; color:#b2b5be; margin-top:2px; font-weight:bold;">RSI: ${data.rsi.toFixed(1)} | cRSI: ${data.crsi.toFixed(1)}${stochStr}</div>`;
+        }
+
         card.innerHTML = `
             <div class="card-top">
                 <button class="btn-star${isFav ? ' active' : ''}" data-symbol="${symbol}">${starIcon}</button>
@@ -410,6 +461,7 @@ function createCoinCard(symbol, isFav, inFavTab) {
                         <span class="coin-pct ${pctClass}">${formattedPct}</span>
                     </div>
                     <div class="coin-price">${formattedPrice}</div>
+                    ${rsiInfo}
                 </div>
             </div>
         `;
@@ -422,10 +474,8 @@ function createCoinCard(symbol, isFav, inFavTab) {
         toggleFavorite(symbol);
     });
 
-    // Note handler (favorites tab only)
+    // Target handler (favorites tab only)
     if (isFav && inFavTab) {
-        const noteEl = card.querySelector('.coin-note');
-        const doneBtn = card.querySelector('.btn-note-done');
         const meterEl = card.querySelector('.target-meter');
         const targetInputEl = card.querySelector('.target-input');
         const targetToggleBtn = card.querySelector('.btn-target-toggle');
@@ -513,34 +563,9 @@ function createCoinCard(symbol, isFav, inFavTab) {
             updateMeter();
         });
 
-        // Show checkmark when editing note
-        noteEl.addEventListener('focus', () => {
-            doneBtn.style.display = 'flex';
-        });
-        noteEl.addEventListener('input', () => {
-            notes[symbol] = noteEl.value;
-            saveNotes();
-            noteEl.style.height = 'auto';
-            noteEl.style.height = noteEl.scrollHeight + 'px';
-        });
-
         setTimeout(() => {
-            if (noteEl.value && noteEl.scrollHeight > 0) {
-                noteEl.style.height = 'auto';
-                requestAnimationFrame(() => {
-                    noteEl.style.height = noteEl.scrollHeight + 'px';
-                });
-            }
             updateMeter();
         }, 10);
-
-        // Note done button
-        doneBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            noteEl.blur();
-            doneBtn.style.display = 'none';
-            showToast('Catatan disimpan');
-        });
 
         // Store meter update function for price refresh
         card._updateMeter = updateMeter;
@@ -550,13 +575,30 @@ function createCoinCard(symbol, isFav, inFavTab) {
 }
 
 // ========== FAVORITES ==========
-function toggleFavorite(symbol) {
+async function toggleFavorite(symbol) {
     if (favorites.has(symbol)) {
         favorites.delete(symbol);
         showToast(`${allTickers[symbol].name} dihapus dari favorit.`);
+        if (wsConnection && wsConnection.readyState === WebSocket.OPEN) {
+            wsConnection.send(JSON.stringify({
+                method: "UNSUBSCRIBE",
+                params: [`${symbol.toLowerCase()}@kline_1m`],
+                id: Date.now()
+            }));
+        }
     } else {
         favorites.add(symbol);
-        showToast(`${allTickers[symbol].name} ditambahkan ke favorit.`);
+        showToast(`${allTickers[symbol].name} ditambahkan ke favorit. Loading RSI...`);
+        
+        await initSingleIndicator(symbol);
+        
+        if (wsConnection && wsConnection.readyState === WebSocket.OPEN) {
+            wsConnection.send(JSON.stringify({
+                method: "SUBSCRIBE",
+                params: [`${symbol.toLowerCase()}@kline_1m`],
+                id: Date.now()
+            }));
+        }
     }
     saveFavorites();
     renderList();
@@ -664,8 +706,15 @@ function bindEvents() {
     try {
         const pos = JSON.parse(localStorage.getItem('refresh-btn-pos'));
         if (pos && typeof pos.left === 'number') {
-            refreshBtnEl.style.left = pos.left + 'px';
-            refreshBtnEl.style.top = pos.top + 'px';
+            const btnSize = refreshBtnEl.offsetWidth || 50; // fallback to 50 if 0
+            const maxX = window.innerWidth - btnSize;
+            const maxY = window.innerHeight - btnSize;
+            
+            let newX = Math.max(0, Math.min(pos.left, maxX));
+            let newY = Math.max(0, Math.min(pos.top, maxY));
+
+            refreshBtnEl.style.left = newX + 'px';
+            refreshBtnEl.style.top = newY + 'px';
             refreshBtnEl.style.right = 'auto';
             refreshBtnEl.style.bottom = 'auto';
         }
@@ -682,6 +731,42 @@ function bindEvents() {
     sortSelectEl.addEventListener('change', () => {
         currentSort = sortSelectEl.value;
         saveSort();
+        // Reset modes when changing standard sort
+        currentMode = 'normal';
+        btnObEl.style.background = 'transparent';
+        btnObEl.style.color = 'var(--red)';
+        btnOsEl.style.background = 'transparent';
+        btnOsEl.style.color = 'var(--green)';
+        renderList();
+    });
+
+    btnObEl.addEventListener('click', () => {
+        if (currentMode === 'ob') {
+            currentMode = 'normal';
+            btnObEl.style.background = 'transparent';
+            btnObEl.style.color = 'var(--red)';
+        } else {
+            currentMode = 'ob';
+            btnObEl.style.background = 'var(--red)';
+            btnObEl.style.color = '#fff';
+            btnOsEl.style.background = 'transparent';
+            btnOsEl.style.color = 'var(--green)';
+        }
+        renderList();
+    });
+
+    btnOsEl.addEventListener('click', () => {
+        if (currentMode === 'os') {
+            currentMode = 'normal';
+            btnOsEl.style.background = 'transparent';
+            btnOsEl.style.color = 'var(--green)';
+        } else {
+            currentMode = 'os';
+            btnOsEl.style.background = 'var(--green)';
+            btnOsEl.style.color = '#fff';
+            btnObEl.style.background = 'transparent';
+            btnObEl.style.color = 'var(--red)';
+        }
         renderList();
     });
 
@@ -811,6 +896,317 @@ function registerServiceWorker() {
         navigator.serviceWorker.register('sw.js').catch(err => {
             console.log('SW registration failed:', err);
         });
+    }
+}
+
+// ========== SCANNER OVERBOUGHT ==========
+let isInitializing = false;
+let wsConnection = null;
+let renderInterval = null;
+
+async function initSingleIndicator(symbol) {
+    try {
+        const KLINE_LIMIT = 50; 
+        const res = await fetchWithFallback(`https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=1m&limit=${KLINE_LIMIT}`);
+        const data = await res.json();
+        
+        const crsiCalc = new StatefulCyclicRSI(20);
+        let lastCrsi = null;
+        let lastRsi = null;
+        const rsiWindow = [];
+        let stochRsi = null;
+        let lastKlineTime = null;
+        
+        for (let j = 0; j < data.length; j++) {
+            const k = data[j];
+            const kTime = k[0];
+            const close = parseFloat(k[4]);
+            const isLastCandle = (j === data.length - 1);
+            crsiCalc.update(close, false);
+            lastRsi = crsiCalc._tempRsi;
+            lastCrsi = crsiCalc.crsi;
+            lastKlineTime = kTime;
+            
+            if (lastRsi !== undefined && lastRsi !== null) {
+                if (!isLastCandle) {
+                    rsiWindow.push(lastRsi);
+                    if (rsiWindow.length > 14) {
+                        rsiWindow.shift();
+                    }
+                }
+            }
+        }
+        
+        const activeWindow = [...rsiWindow, lastRsi];
+        if (activeWindow.length > 14) activeWindow.shift();
+        
+        if (activeWindow.length === 14) {
+            const minRsi = Math.min(...activeWindow);
+            const maxRsi = Math.max(...activeWindow);
+            if (maxRsi === minRsi) {
+                stochRsi = 0;
+            } else {
+                stochRsi = ((lastRsi - minRsi) / (maxRsi - minRsi)) * 100;
+            }
+        }
+        
+        if (allTickers[symbol]) {
+            const rsi = lastRsi || 0;
+            const crsi = lastCrsi || 0;
+            allTickers[symbol].crsiCalc = crsiCalc;
+            allTickers[symbol].rsiWindow = rsiWindow;
+            allTickers[symbol].lastKlineTime = lastKlineTime;
+            allTickers[symbol].obScore = rsi + crsi;
+            allTickers[symbol].rsi = rsi;
+            allTickers[symbol].crsi = crsi;
+            allTickers[symbol].stochRsi = stochRsi !== null ? stochRsi : 0;
+        }
+    } catch (e) {
+        console.warn("Failed to init klines for", symbol);
+    }
+}
+
+async function initializeIndicators() {
+    if (isInitializing) return;
+    isInitializing = true;
+
+    const symbols = Array.from(favorites);
+    if (symbols.length > 0) {
+        showToast("Menginisialisasi RSI Favorit...");
+    }
+
+    const chunkSize = 20;
+    
+    for (let i = 0; i < symbols.length; i += chunkSize) {
+        const progress = Math.round((i / symbols.length) * 100);
+        showToast(`Menginisialisasi RSI Favorit (${progress}%)...`);
+        
+        const chunk = symbols.slice(i, i + chunkSize);
+        
+        await Promise.all(chunk.map(symbol => initSingleIndicator(symbol)));
+        
+        await new Promise(r => setTimeout(r, 200));
+    }
+    
+    if (symbols.length > 0) {
+        showToast("Inisialisasi selesai! Connecting WebSocket...");
+    } else {
+        showToast("Connecting WebSocket...");
+    }
+    setupWebSocket();
+    
+    if (!renderInterval) {
+        renderInterval = setInterval(() => {
+            renderList();
+        }, 1500);
+    }
+}
+
+function setupWebSocket() {
+    if (wsConnection) {
+        wsConnection.close();
+    }
+    
+    // Connect to combined stream with just ticker first to keep URL short
+    wsConnection = new WebSocket(`wss://fstream.binance.com/stream?streams=!ticker@arr`);
+    
+    wsConnection.onopen = () => {
+        showToast("Live Data Terhubung!");
+        
+        // Subscribe to klines in chunks to avoid payload limits
+        const klineStreams = Array.from(favorites).map(sym => `${sym.toLowerCase()}@kline_1m`);
+        const chunkSize = 50;
+        let idCounter = 1;
+        
+        for (let i = 0; i < klineStreams.length; i += chunkSize) {
+            const chunk = klineStreams.slice(i, i + chunkSize);
+            wsConnection.send(JSON.stringify({
+                method: "SUBSCRIBE",
+                params: chunk,
+                id: idCounter++
+            }));
+        }
+    };
+    
+    wsConnection.onmessage = (event) => {
+        try {
+            const msg = JSON.parse(event.data);
+            if (!msg.stream || !msg.data) return;
+            
+            if (msg.stream === '!ticker@arr') {
+                msg.data.forEach(t => {
+                    const sym = t.s;
+                    if (allTickers[sym]) {
+                        allTickers[sym].price = parseFloat(t.c);
+                        allTickers[sym].pct = parseFloat(t.P);
+                    }
+                });
+            } else if (msg.stream.endsWith('@kline_1m')) {
+                const sym = msg.data.s;
+                const k = msg.data.k;
+                const close = parseFloat(k.c);
+                const kTime = k.t;
+                
+                if (allTickers[sym] && allTickers[sym].crsiCalc) {
+                    const isNewCandle = allTickers[sym].lastKlineTime !== kTime;
+                    
+                    if (isNewCandle) {
+                        if (allTickers[sym].rsi !== undefined && allTickers[sym].rsi !== null) {
+                            allTickers[sym].rsiWindow.push(allTickers[sym].rsi);
+                            if (allTickers[sym].rsiWindow.length > 14) {
+                                allTickers[sym].rsiWindow.shift();
+                            }
+                        }
+                        allTickers[sym].crsiCalc.update(close, false);
+                        allTickers[sym].lastKlineTime = kTime;
+                    } else {
+                        allTickers[sym].crsiCalc.update(close, true);
+                    }
+                    
+                    const rsi = allTickers[sym].crsiCalc._tempRsi || 0;
+                    const crsi = allTickers[sym].crsiCalc.crsi || 0;
+                    
+                    let stochRsi = 0;
+                    const activeWindow = [...allTickers[sym].rsiWindow, rsi];
+                    if (activeWindow.length > 14) activeWindow.shift();
+                    
+                    if (activeWindow.length === 14) {
+                        const minRsi = Math.min(...activeWindow);
+                        const maxRsi = Math.max(...activeWindow);
+                        if (maxRsi === minRsi) stochRsi = 0;
+                        else stochRsi = ((rsi - minRsi) / (maxRsi - minRsi)) * 100;
+                    }
+                    
+                    allTickers[sym].rsi = rsi;
+                    allTickers[sym].crsi = crsi;
+                    allTickers[sym].stochRsi = stochRsi;
+                    allTickers[sym].obScore = rsi + crsi;
+                }
+            }
+        } catch (err) {}
+    };
+    
+    wsConnection.onclose = () => {
+        setTimeout(setupWebSocket, 3000);
+    };
+}
+
+// ========== CYCLIC RSI CLASS ==========
+class StatefulCyclicRSI {
+    constructor(domcycle = 20) {
+        this.domcycle = domcycle;
+        this.cyclelen = domcycle / 2.0;
+        this.smaLength = Math.round(this.cyclelen);
+        this.vibration = 10;
+        this.leveling = 10.0;
+        this.phasingLag = Math.round((this.vibration - 1) / 2.0); 
+        this.torque = 2.0 / (this.vibration + 1);
+        this.cyclicmemory = this.domcycle * 2;
+        this.priceHistory = [];
+        this.c_rsiHistory = [];
+        this.c_crsiHistory = [];
+        this.priceCount = 0;
+        this.c_avgGain = 0;
+        this.c_avgLoss = 0;
+        this.c_prevCrsi = null;
+        this.crsi = null;
+        this._tempCrsi = null;
+        this.currentValue = { crsi: null, upperBand: null, lowerBand: null };
+    }
+    _calcRSI(gain, loss) {
+        if (loss === 0) return 100;
+        if (gain === 0) return 0;
+        return 100 - (100 / (1 + gain / loss));
+    }
+    _computeBands(crsiHist) {
+        const vals = crsiHist.filter(v => v !== null && !isNaN(v));
+        if (vals.length === 0) return { upperBand: null, lowerBand: null };
+        let lmax = -999999.0;
+        let lmin = 999999.0;
+        for (let i = vals.length - 1; i >= 0; i--) {
+            if (vals[i] > lmax) lmax = vals[i];
+            if (vals[i] < lmin) lmin = vals[i];
+        }
+        if (lmax === -999999.0 || lmin === 999999.0) return { upperBand: null, lowerBand: null };
+        const aperc = this.leveling / 100.0;
+        const sorted = [...vals].sort((a, b) => a - b);
+        let targetBelowCount = Math.ceil(aperc * this.cyclicmemory);
+        if (targetBelowCount >= sorted.length) targetBelowCount = sorted.length - 1;
+        if (targetBelowCount < 0) targetBelowCount = 0;
+        let db = sorted[targetBelowCount];
+        let targetAboveCount = Math.ceil(aperc * this.cyclicmemory);
+        let targetUpperIndex = sorted.length - targetAboveCount;
+        if (targetUpperIndex < 0) targetUpperIndex = 0;
+        if (targetUpperIndex >= sorted.length) targetUpperIndex = sorted.length - 1;
+        let ub = sorted[targetUpperIndex];
+        return { upperBand: ub, lowerBand: db };
+    }
+    update(price, replaceLast = false) {
+        if (!replaceLast) {
+            if (this.priceHistory.length > 0) {
+                if (this.priceCount === this.smaLength + 1 || this.priceCount > this.smaLength + 1) {
+                    this.c_avgGain = this._tempAvgGain;
+                    this.c_avgLoss = this._tempAvgLoss;
+                }
+                if (this._tempRsi !== undefined && this._tempRsi !== null) {
+                    this.c_rsiHistory.push(this._tempRsi);
+                    if (this.c_rsiHistory.length > this.phasingLag + 2) this.c_rsiHistory.shift();
+                }
+                if (this._tempCrsi !== undefined && this._tempCrsi !== null) {
+                    this.c_prevCrsi = this._tempPrevCrsiForNextBar;
+                    this.c_crsiHistory.push(this._tempCrsi);
+                    if (this.c_crsiHistory.length > this.cyclicmemory) this.c_crsiHistory.shift();
+                }
+            }
+            this.priceHistory.push(price);
+            this.priceCount++;
+        } else {
+            if (this.priceHistory.length > 0) {
+                this.priceHistory[this.priceHistory.length - 1] = price;
+            }
+        }
+        if (this.priceCount <= this.smaLength + 1) {
+            let sumGain = 0;
+            let sumLoss = 0;
+            const startIdx = Math.max(1, this.priceHistory.length - this.priceCount + 1);
+            for (let i = startIdx; i < this.priceHistory.length; i++) {
+                const diff = this.priceHistory[i] - this.priceHistory[i - 1];
+                if (diff > 0) sumGain += diff;
+                else sumLoss -= diff;
+            }
+            if (this.priceCount === this.smaLength + 1) {
+                this._tempAvgGain = sumGain / this.smaLength;
+                this._tempAvgLoss = sumLoss / this.smaLength;
+                this._tempRsi = this._calcRSI(this._tempAvgGain, this._tempAvgLoss);
+            } else {
+                return null;
+            }
+        } else {
+            const diff = price - this.priceHistory[this.priceHistory.length - 2];
+            const gain = diff > 0 ? diff : 0;
+            const loss = diff < 0 ? -diff : 0;
+            this._tempAvgGain = (gain + (this.cyclelen - 1) * this.c_avgGain) / this.cyclelen;
+            this._tempAvgLoss = (loss + (this.cyclelen - 1) * this.c_avgLoss) / this.cyclelen;
+            this._tempRsi = this._calcRSI(this._tempAvgGain, this._tempAvgLoss);
+        }
+        const activeRsiHist = [...this.c_rsiHistory, this._tempRsi];
+        let crsiVal = null;
+        if (activeRsiHist.length > this.phasingLag) {
+            const laggedRsi = activeRsiHist[activeRsiHist.length - 1 - this.phasingLag];
+            const rsiVal = this._tempRsi;
+            const prevCrsiForCalc = this.c_prevCrsi !== null ? this.c_prevCrsi : rsiVal;
+            crsiVal = this.torque * (2 * rsiVal - laggedRsi) + (1 - this.torque) * prevCrsiForCalc;
+            crsiVal = Math.max(0, Math.min(100, crsiVal)); 
+            this._tempCrsi = crsiVal;
+            this._tempPrevCrsiForNextBar = crsiVal;
+            const activeCrsiHist = [...this.c_crsiHistory, crsiVal];
+            if (activeCrsiHist.length > this.cyclicmemory) activeCrsiHist.shift(); 
+            const { upperBand, lowerBand } = this._computeBands(activeCrsiHist);
+            this.crsi = crsiVal;
+            this.currentValue = { crsi: crsiVal, upperBand, lowerBand };
+            return this.currentValue;
+        }
+        return null;
     }
 }
 
