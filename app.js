@@ -1117,8 +1117,8 @@ function setupWebSocket() {
         wsConnection.close();
     }
     
-    // Connect to Raw Stream instead of Combined Stream to bypass proxy/ISP issues
-    wsConnection = new WebSocket(`wss://fstream.binance.com/ws/!ticker@arr`);
+    // Connect to combined stream with just ticker first to keep URL short
+    wsConnection = new WebSocket(`wss://fstream.binance.com/stream?streams=!ticker@arr`);
     
     wsConnection.onopen = async () => {
         console.log("✅ WebSocket BERHASIL terbuka!");
